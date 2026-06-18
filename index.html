@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Movement Framework</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: linear-gradient(135deg, #fafafa 0%, #f0f0f3 100%);
+    color: #2c3e50;
+    min-height: 100vh;
+    padding: 30px 20px;
+  }
+  .page { max-width: 1400px; margin: 0 auto; }
+  .header { text-align: center; margin-bottom: 30px; }
+  .header h1 { font-size: 2.4em; color: #1a3a52; margin-bottom: 8px; }
+  .header p { font-size: 1.05em; color: #6b7c8c; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 40px;
+    align-items: start;
+  }
+
+  .flower-side { position: sticky; top: 20px; }
+  .flower-wrapper { width: 100%; max-width: 620px; margin: 0 auto; }
+  .flower-svg { width: 100%; height: auto; display: block; overflow: visible; }
+
+  .petal { cursor: pointer; transition: filter 0.35s ease, transform 0.35s ease; transform-origin: 300px 300px; transform-box: fill-box; }
+  .petal path { transition: opacity 0.3s ease, stroke-width 0.3s ease; }
+  .petal:hover path { opacity: 0.92; }
+  .petal:hover { filter: drop-shadow(0 8px 16px rgba(0,0,0,0.18)); }
+  .petal.active path { stroke: rgba(26, 58, 82, 0.7); stroke-width: 2.5; }
+
+  .petal-label {
+    pointer-events: none;
+    fill: white;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-anchor: middle;
+    letter-spacing: 0.2px;
+  }
+  .petal-emoji { pointer-events: none; font-size: 24px; text-anchor: middle; }
+  .triangle-corner-label {
+    pointer-events: none;
+    fill: white;
+    font-size: 7.5px;
+    font-weight: 700;
+    text-anchor: middle;
+    letter-spacing: 0.2px;
+    opacity: 0.95;
+  }
+
+  .center-circle-outer { fill: #fafafa; stroke: rgba(26, 58, 82, 0.08); stroke-width: 1; }
+  .center-circle { fill: white; stroke: rgba(26, 58, 82, 0.12); stroke-width: 1.5; }
+  .center-label {
+    fill: #1a3a52;
+    font-size: 17px;
+    font-weight: 800;
+    text-anchor: middle;
+    pointer-events: none;
+    letter-spacing: 1.5px;
+  }
+  .center-emoji { font-size: 30px; text-anchor: middle; pointer-events: none; }
+
+  .detail-panel {
+    background: white;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.06);
+    min-height: 500px;
+  }
+  .detail-placeholder { padding: 80px 40px; text-align: center; color: #95a5a6; }
+  .detail-placeholder .big-arrow { font-size: 3em; margin-bottom: 15px; }
+  .detail-placeholder h3 { color: #5a6c7d; margin-bottom: 10px; font-size: 1.3em; }
+
+  .detail-header { padding: 35px 40px 25px; color: white; }
+  .detail-icon { font-size: 2.5em; margin-bottom: 8px; }
+  .detail-title { font-size: 1.7em; font-weight: 700; margin-bottom: 6px; }
+  .detail-subtitle { opacity: 0.9; font-size: 1em; }
+  .detail-body { padding: 30px 40px 40px; line-height: 1.7; color: #34495e; }
+  .detail-body h4 {
+    color: #1a3a52;
+    margin: 24px 0 10px;
+    font-size: 1.15em;
+    border-left: 4px solid #cbd5e0;
+    padding-left: 12px;
+  }
+  .detail-body ul { margin: 10px 0 14px 22px; }
+  .detail-body li { margin-bottom: 8px; }
+  .detail-body p { margin-bottom: 12px; }
+  .highlight {
+    background: linear-gradient(120deg, #fef3c7 0%, #fde68a 100%);
+    padding: 16px 20px;
+    border-radius: 10px;
+    margin: 18px 0;
+    border-left: 4px solid #f59e0b;
+  }
+  .source-ref {
+    background: linear-gradient(120deg, #e0e7ff 0%, #c7d2fe 100%);
+    padding: 12px 18px;
+    border-radius: 10px;
+    margin: 14px 0;
+    border-left: 4px solid #6366f1;
+    font-size: 0.92em;
+    color: #3730a3;
+  }
+  .source-ref strong { color: #312e81; }
+  .sub-pillar {
+    background: #f8f9fb;
+    border-radius: 12px;
+    padding: 18px 22px;
+    margin: 14px 0;
+    border-left: 4px solid #cbd5e0;
+  }
+  .sub-pillar strong { color: #1a3a52; font-size: 1.05em; }
+  .quick-facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin: 18px 0;
+  }
+  .fact-card {
+    background: #f0f4f8;
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+  }
+  .fact-card .fact-num {
+    font-size: 1.6em;
+    font-weight: 800;
+    color: #1a3a52;
+    display: block;
+  }
+  .fact-card .fact-label { font-size: 0.85em; color: #6b7c8c; }
+  .takeaway {
+    background: linear-gradient(120deg, #d1fae5 0%, #a7f3d0 100%);
+    padding: 16px 20px;
+    border-radius: 10px;
+    margin: 20px 0;
+    border-left: 4px solid #10b981;
+  }
+  .takeaway strong { color: #065f46; }
+
+  @media (max-width: 1024px) {
+    .layout { grid-template-columns: 1fr; gap: 30px; }
+    .flower-side { position: static; }
+    .detail-panel { min-height: auto; }
+  }
+  @media (max-width: 600px) {
+    .header h1 { font-size: 1.8em; }
+    .detail-header, .detail-body { padding: 25px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="header">
+    <h1>🌸 Movement Framework</h1>
+    <p>8 pillars for a healthier, longer, more energized life — click any petal to dive in</p>
+  </div>
+
+  <div class="layout">
+    <div class="flower-side">
+      <div class="flower-wrapper">
+        <svg class="flower-svg" viewBox="0 0 600 600" id="flower" xmlns="http://www.w3.org/2000/svg">
+          <defs id="flowerDefs"></defs>
+        </svg>
+      </div>
+    </div>
+
+    <div class="detail-panel" id="detailPanel">
+      <div class="detail-placeholder" id="detailPlaceholder">
+        <div class="big-arrow">👈</div>
+        <h3>Select a pillar</h3>
+        <p>Click on any petal to discover its key concepts and deep dive.</p>
+      </div>
+      <div id="detailContent" style="display:none;">
+        <div class="detail-header" id="detailHeader">
+          <div class="detail-icon" id="detailIcon"></div>
+          <div class="detail-title" id="detailTitle"></div>
+          <div class="detail-subtitle" id="detailSubtitle"></div>
+        </div>
+        <div class="detail-body" id="detailBody"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var pillars = [
+    {
+      color: "#8B1E2E", icon: "🔺", showTriangleCorners: true,
+      labelLines: ["MOVEMENT", "TRIANGLE"],
+      title: "The Movement Triangle",
+      subtitle: "Strength + Flexibility + Cardio: the non-negotiable foundation",
+      body:
+        '<p><strong>The Movement Triangle represents the three essential physical capacities every human body needs throughout life:</strong> <strong>Strength</strong>, <strong>Flexibility & Mobility</strong>, and <strong>Cardiovascular Endurance</strong>. Each side supports the others — neglecting one weakens the whole structure.</p>' +
+        '<p>Think of it like a three-legged stool: remove or shorten any leg, and balance is lost. Strong muscles without mobility lead to stiffness and injury. Flexibility without strength leaves joints unstable. Great cardio without strength accelerates muscle loss with age. The three together create a resilient, capable body.</p>' +
+        '<div class="quick-facts">' +
+          '<div class="fact-card"><span class="fact-num">10–20%</span><span class="fact-label">lower mortality with regular strength training</span></div>' +
+          '<div class="fact-card"><span class="fact-num">~1%</span><span class="fact-label">muscle mass lost per year after 30</span></div>' +
+          '<div class="fact-card"><span class="fact-num">150 min</span><span class="fact-label">weekly cardio (WHO minimum)</span></div>' +
+        '</div>' +
+        '<div class="sub-pillar"><strong>💪 Strength</strong><br>Beyond aesthetics — strength training preserves muscle mass, bone density, and metabolic health. Sarcopenia (age-related muscle loss) starts at 30 and accelerates after 50. Just <strong>30–60 min/week</strong> reduces all-cause mortality by 10–20%.</div>' +
+        '<div class="sub-pillar"><strong>🤸 Flexibility & Mobility</strong><br>Maintains joint range of motion, supports fascia health, prevents injury, and sustains independence in older age. Modern desk life systematically shortens hip flexors, hamstrings, and chest muscles — counteracting this is essential.</div>' +
+        '<div class="sub-pillar"><strong>❤️ Cardiovascular Endurance</strong><br>Supports heart health, brain function (BDNF), metabolic flexibility, and longevity. VO2 max is one of the strongest predictors of lifespan.</div>' +
+        '<h4>WHO Weekly Minimum</h4>' +
+        '<ul>' +
+          '<li>✓ <strong>150 min</strong> moderate cardio <strong>OR</strong> 75 min vigorous</li>' +
+          '<li>✓ <strong>2 strength sessions</strong> targeting all major muscle groups</li>' +
+          '<li>✓ <strong>2–3 flexibility sessions</strong> (stretching, yoga, mobility)</li>' +
+        '</ul>' +
+        '<div class="takeaway"><strong>🎯 Takeaway:</strong> A balanced movement diet means hitting all three corners of the triangle every week — not perfection, but presence in each.</div>'
+    },
+    {
+      color: "#A82F44", icon: "💆",
+      labelLines: ["TENSION", "RELEASE"],
+      title: "Tension Release",
+      subtitle: "Muscles, fascia & how the body stores — and releases — stress",
+      body:
+        '<p><strong>Your body is a memory device.</strong> Stress, posture habits, and chronic tension get stored in muscles and fascia. Understanding this — and learning to release it — is one of the most overlooked aspects of well-being.</p>' +
+        '<h4>Where Stress Lives in the Body</h4>' +
+        '<ul>' +
+          '<li><strong>Jaw & face</strong> — clenching, grinding, headaches</li>' +
+          '<li><strong>Neck & shoulders</strong> — "carrying the world"</li>' +
+          '<li><strong>Hips (psoas)</strong> — the body\'s emotional storage center</li>' +
+          '<li><strong>Diaphragm</strong> — restricted breathing under stress</li>' +
+          '<li><strong>Lower back</strong> — postural & emotional load</li>' +
+        '</ul>' +
+        '<h4>🕸️ Fascia — The Forgotten Tissue</h4>' +
+        '<p>Fascia is a 3D web of connective tissue surrounding every muscle, organ, and nerve. It was long ignored in anatomy, but research now shows it plays a crucial role in:</p>' +
+        '<ul>' +
+          '<li>Posture and movement efficiency</li>' +
+          '<li>Pain perception and emotional storage</li>' +
+          '<li>Hydration and nutrient flow between tissues</li>' +
+        '</ul>' +
+        '<div class="sub-pillar"><strong>Why fascia gets "stuck"</strong><br>• Sedentary lifestyle (sitting >6h/day)<br>• Dehydration<br>• Repetitive movement patterns<br>• Chronic stress<br>• Past injuries</div>' +
+        '<h4>Muscle Physiology Quick Wins</h4>' +
+        '<ul>' +
+          '<li><strong>Lactic acid</strong> isn\'t the villain — it\'s a fuel. Soreness comes from microscopic muscle damage that triggers adaptation.</li>' +
+          '<li><strong>Active recovery</strong> (light walking, swimming, yoga) clears metabolic waste better than total rest.</li>' +
+          '<li><strong>Sleep is when muscle repairs</strong> — 7–9 hours is non-negotiable.</li>' +
+        '</ul>' +
+        '<h4>🔓 Release Techniques</h4>' +
+        '<div class="sub-pillar"><strong>Long-hold stretching (1.5–2.5 min)</strong><br>Required to reach deep fascial layers. Quick stretches only address muscles.</div>' +
+        '<div class="sub-pillar"><strong>Shaking (TRE-inspired)</strong><br>Tremor-based release activates the parasympathetic nervous system. 5–10 minutes resets stress responses.</div>' +
+        '<div class="sub-pillar"><strong>Foam rolling & self-massage</strong><br>Slow, mindful pressure on tight areas. Combine with deep breathing for amplified effect.</div>' +
+        '<div class="sub-pillar"><strong>Hydration + varied movement</strong><br>Fascia needs water and movement diversity to stay supple. Move in all directions, not just forward.</div>' +
+        '<h4>🤕 Migraine — When Tension Becomes Pain</h4>' +
+        '<p>Migraines are not "just bad headaches." They are a complex neurological event, but in many cases <strong>chronic tension is a major trigger</strong> — particularly tightness in the neck, shoulders, jaw, and base of the skull (suboccipital muscles).</p>' +
+        '<div class="sub-pillar"><strong>Common tension-related triggers</strong><br>' +
+          '• Forward head posture from screen use<br>' +
+          '• Jaw clenching & teeth grinding (bruxism)<br>' +
+          '• Restricted breathing patterns<br>' +
+          '• Poor sleep & dehydration<br>' +
+          '• Accumulated stress without release</div>' +
+        '<div class="sub-pillar"><strong>Movement-based relief strategies</strong><br>' +
+          '• <strong>Suboccipital release</strong> — gentle pressure at the base of the skull<br>' +
+          '• <strong>Neck & upper-trap stretches</strong> — held 60–90 seconds<br>' +
+          '• <strong>Jaw massage & face yoga</strong> — releases TMJ tension<br>' +
+          '• <strong>Diaphragmatic breathing</strong> — calms the nervous system<br>' +
+          '• <strong>Regular Zone 2 cardio</strong> — proven to reduce migraine frequency<br>' +
+          '• <strong>Consistent sleep & hydration</strong> — foundational</div>' +
+        '<p><em>Note: Migraines can have many causes (hormonal, neurological, dietary). If migraines are frequent or severe, consult a healthcare professional.</em></p>' +
+        '<div class="takeaway"><strong>🎯 Takeaway:</strong> Tension you carry isn\'t a personal flaw — it\'s biology. Daily release practices are as important as the workouts themselves.</div>'
+    },
+    {
+      color: "#C73E5C", icon: "🪑",
+      labelLines: ["MOVEMENT", "AT WORK"],
+      title: "Movement at Work",
+      subtitle: "NEAT, exercise snacks & desk ergonomics",
+      body:
+        '<p><strong>The biggest movement opportunity isn\'t at the gym — it\'s during your workday.</strong> Daily incidental movement often outperforms a single intense workout for long-term health.</p>' +
+        '<div class="highlight">🪑 <strong>The "sitting disease":</strong> Prolonged sitting (>6h/day) is linked to increased cardiovascular risk, metabolic dysfunction, and lower back pain — even if you exercise regularly.</div>' +
+        '<h4>NEAT — Non-Exercise Activity Thermogenesis</h4>' +
+        '<p>NEAT is the energy you burn doing everything except sleeping, eating, or formal exercise: walking, taking stairs, fidgeting, standing, gardening. Studies show NEAT can vary by <strong>up to 2,000 calories/day</strong> between individuals — making it the biggest lever for energy expenditure.</p>' +
+        '<h4>🍿 Realistic Exercise Snacks at Work</h4>' +
+        '<p>The trick isn\'t cramming workouts into your day — it\'s leveraging moments you already have. Try one or two of these consistently:</p>' +
+        '<ul>' +
+          '<li><strong>Take the stairs</strong> instead of the elevator when possible</li>' +
+          '<li><strong>Park further away</strong> or get off transit one stop earlier</li>' +
+          '<li><strong>Stand up during phone calls</strong> — even better, pace if you can</li>' +
+          '<li><strong>Walk to a colleague\'s desk</strong> instead of sending a chat message</li>' +
+          '<li><strong>Use the bathroom on a different floor</strong> — small detour, real impact</li>' +
+          '<li><strong>Take a 5–10 min walk after lunch</strong> — best blood-sugar regulator there is</li>' +
+          '<li><strong>Stand or stretch while reading</strong> emails or long documents</li>' +
+        '</ul>' +
+        '<p>The goal isn\'t to be the person doing squats in the open office — it\'s to <strong>break up sitting</strong> and add steps where they naturally fit.</p>' +
+        '<h4>🤲 Discreet Desk Movements</h4>' +
+        '<p>These can be done seated, in 30 seconds, without anyone noticing:</p>' +
+        '<ul>' +
+          '<li><strong>Ankle circles</strong> under the desk — boosts circulation</li>' +
+          '<li><strong>Shoulder rolls</strong> — releases upper-trap tension</li>' +
+          '<li><strong>Scapular squeezes</strong> — counters rounded shoulders</li>' +
+          '<li><strong>Seated spinal twist</strong> — gentle rotation in your chair</li>' +
+          '<li><strong>Neck side-tilts</strong> — relieves screen-strain</li>' +
+        '</ul>' +
+        '<h4>🛠️ Workplace Tools to Use</h4>' +
+        '<ul>' +
+          '<li>✓ <strong>Height-adjustable desks</strong> — alternate sitting/standing every 30–45 min</li>' +
+          '<li>✓ <strong>Ergonomic chairs & accessories</strong></li>' +
+          '<li>✓ <strong>Walking meetings</strong> — for 1:1s and brainstorms</li>' +
+          '<li>✓ <strong>Outdoor breaks</strong> — sunlight + Vitamin D + nature reset</li>' +
+          '<li>✓ <strong>Phone calls while walking</strong> — multiply your steps</li>' +
+        '</ul>' +
+        '<h4>🖥️ Workspace Ergonomics Quick Check</h4>' +
+        '<ul>' +
+          '<li>Top of monitor at eye level</li>' +
+          '<li>Elbows at ~90° on the desk</li>' +
+          '<li>Feet flat on the floor</li>' +
+          '<li>Screen ~arm\'s length away</li>' +
+        '</ul>' +
+        '<div class="takeaway"><strong>🎯 Takeaway:</strong> Movement throughout the day is more powerful than 1 hour of training + 8 hours of sitting. Pick 1–2 habits that fit naturally into your routine — they compound.</div>'
+    },
+    {
+      color: "#D86A82", icon: "❤️",
+      labelLines: ["SMART", "CARDIO"],
+      title: "Smart Cardio",
+      subtitle: "Zone 2, HIIT & cycle-aware training",
+      body:
+        '<p><strong>Cardio is not one thing — it\'s a spectrum.</strong> The latest science shows that mixing different intensities produces results no single approach can match.</p>' +
+        '<h4>The 5-Zone Heart Rate Model</h4>' +
+        '<ul>' +
+          '<li><strong>Zone 1</strong> — Very light (walking, recovery)</li>' +
+          '<li><strong>Zone 2</strong> — Conversational pace ⭐ <em>the sweet spot</em></li>' +
+          '<li><strong>Zone 3</strong> — Tempo (uncomfortable but sustainable)</li>' +
+          '<li><strong>Zone 4</strong> — Threshold (hard, can\'t talk)</li>' +
+          '<li><strong>Zone 5</strong> — Maximum (HIIT intervals)</li>' +
+        '</ul>' +
+        '<div class="sub-pillar"><strong>🟢 Zone 2 — Why It\'s Magical</strong><br>' +
+          '• Builds <strong>mitochondrial density</strong> (your cellular energy factories)<br>' +
+          '• Improves <strong>fat-burning capacity</strong> & metabolic flexibility<br>' +
+          '• Lowers resting heart rate over time<br>' +
+          '• <strong>2–4 sessions/week, 30–60 min each</strong><br>' +
+          '• You should be able to hold a conversation throughout</div>' +
+        '<div class="sub-pillar"><strong>🔴 HIIT — Maximum Benefit, Minimum Time</strong><br>' +
+          '• 4–8 intervals of 30 sec to 4 min hard effort<br>' +
+          '• Equally effective as longer steady-state for VO2 max<br>' +
+          '• 1–2 sessions/week is plenty<br>' +
+          '• Highly time-efficient (15–25 min total)</div>' +
+        '<h4>The 80/20 Rule</h4>' +
+        '<p>Elite endurance athletes spend ~80% of training time in Zone 2 and only ~20% in higher intensities. The same principle works for everyday athletes.</p>' +
+        '<div class="highlight">⚠️ <strong>Important for women:</strong> HIIT and high-intensity training are not always optimal during menstruation, perimenopause, or menopause. Cortisol responses differ, and recovery needs more time. <strong>Cycle-synced training</strong> adapts intensity to hormonal phases:<br><br>' +
+          '• <strong>Follicular phase</strong> (post-period): higher intensity feels great<br>' +
+          '• <strong>Ovulation:</strong> peak strength<br>' +
+          '• <strong>Luteal phase:</strong> moderate intensity, more recovery<br>' +
+          '• <strong>Menstruation:</strong> gentle movement, restorative</div>' +
+        '<h4>VO2 Max — The Longevity Marker</h4>' +
+        '<p>VO2 max is one of the strongest predictors of all-cause mortality. The good news: it\'s highly trainable at any age. A combination of Zone 2 + occasional HIIT improves it most efficiently.</p>' +
+        '<h4>🌅 Takeaways from the DEI Morning Sessions</h4>' +
+        '<p>The DEI Morning Session on <strong>Longevity</strong> reinforced the cardio-as-medicine message with concrete biological evidence — connecting movement to cellular and genetic health:</p>' +
+        '<div class="sub-pillar"><strong>🏃 The Recommended Regimen</strong><br>' +
+          '• <strong>3 endurance sessions per week × 45 minutes</strong> — the foundation<br>' +
+          '• Combine with <strong>weight training</strong>, especially beneficial for women<br>' +
+          '• Consistency over intensity</div>' +
+        '<div class="sub-pillar"><strong>🧬 Telomerase Activity Doubled</strong><br>' +
+          'A study at Bad Homburg University Hospital showed that <strong>3 × 45-minute sessions per week over 6 months doubled telomerase activity</strong> — the enzyme that rebuilds shortened telomeres. Telomeres protect chromosomes and are central to genome stability and healthy aging.</div>' +
+        '<div class="sub-pillar"><strong>🔥 Lower Inflammation, Better Metabolism</strong><br>' +
+          '• Athletes produce <strong>fewer pro-inflammatory cytokines</strong><br>' +
+          '• Regular exercise <strong>stabilizes insulin sensitivity</strong><br>' +
+          '• Helps <strong>reduce cortisol</strong> levels over time</div>' +
+        '<div class="sub-pillar"><strong>♨️ Hormesis — Positive Stress for Longevity</strong><br>' +
+          'Hormesis is the adaptive response of cells to <strong>moderate, intermittent stress</strong>. Beyond endurance training, it includes:<br>' +
+          '• <strong>Sauna:</strong> 6 sessions/week → +28% mitochondrial performance (Finnish study, 2,300 subjects); linked to <strong>+3–4 years life expectancy</strong><br>' +
+          '• <strong>Cold exposure:</strong> boosts mitochondria and converts white fat into <strong>brown adipose tissue</strong> (more mitochondria-rich)</div>' +
+        '<div class="quick-facts">' +
+          '<div class="fact-card"><span class="fact-num">2×</span><span class="fact-label">telomerase activity in 6 months</span></div>' +
+          '<div class="fact-card"><span class="fact-num">+28%</span><span class="fact-label">mitochondrial performance from sauna</span></div>' +
+          '<div class="fact-card"><span class="fact-num">+3–4</span><span class="fact-label">years life expectancy with regular sauna</span></div>' +
+        '</div>' +
+        '<div class="source-ref">📄 <strong>Source:</strong> <em>DEI Morning Session — Longevity Infographic</em>. The full infographic covers movement & sports, hormesis, mitochondrial health, telomere protection, and DNA repair as key longevity levers.</div>' +
+        '<div class="takeaway"><strong>🎯 Takeaway:</strong> Most people train too hard on easy days and not hard enough on hard days. Slow down your slow workouts and push harder on intense ones — and remember, smart cardio doesn\'t just shape your body, it rebuilds your cells.</div>'
+    },
+    {
+      color: "#5A5A5A", icon: "🧠",
+      labelLines: ["MIND-BODY", "MOVEMENT"],
+      title: "Mind–Body Movement",
+      subtitle: "Neuro-motor training, face yoga & nervous system regulation",
+      body:
+        '<p><strong>Movement isn\'t just physical — it\'s deeply neurological.</strong> The right kinds of movement train your brain, regulate your nervous system, and release tension that ordinary exercise doesn\'t reach.</p>' +
+        '<h4>🧠 Neuro-Motor Movement</h4>' +
+        '<p>Cross-body and asymmetrical movements activate <strong>both brain hemispheres simultaneously</strong>, strengthening the corpus callosum (the bridge between left and right brain).</p>' +
+        '<div class="quick-facts">' +
+          '<div class="fact-card"><span class="fact-num">↑</span><span class="fact-label">Learning & focus</span></div>' +
+          '<div class="fact-card"><span class="fact-num">↑</span><span class="fact-label">Coordination</span></div>' +
+          '<div class="fact-card"><span class="fact-num">↓</span><span class="fact-label">Falls in older age</span></div>' +
+        '</div>' +
+        '<h4>Examples of Neuro-Motor Training</h4>' +
+        '<ul>' +
+          '<li><strong>Cross-crawls</strong> — touch opposite knee with elbow</li>' +
+          '<li><strong>Contralateral reaches</strong> — bird-dog patterns</li>' +
+          '<li><strong>Eye-movement techniques</strong> — saccades, focus shifting</li>' +
+          '<li><strong>Juggling</strong> — improves spatial processing</li>' +
+          '<li><strong>Gait drills & balance work</strong> — single-leg stands</li>' +
+          '<li><strong>Dance & complex choreography</strong> — proven brain protection</li>' +
+        '</ul>' +
+        '<h4>😌 Face Yoga & Localized Tension Release</h4>' +
+        '<p>The face holds enormous tension — especially the jaw, which is one of the body\'s top stress storage sites. Face yoga blends acupressure, self-massage, and targeted exercises.</p>' +
+        '<div class="sub-pillar"><strong>Benefits of face yoga</strong><br>' +
+          '• Releases jaw clenching & TMJ tension<br>' +
+          '• Reduces tension headaches<br>' +
+          '• Improves facial circulation & lymphatic drainage<br>' +
+          '• Activates the vagus nerve → calm response<br>' +
+          '• Can soften lines and improve skin tone</div>' +
+        '<h4>Simple Face Yoga Moves</h4>' +
+        '<ul>' +
+          '<li><strong>Jaw release:</strong> drop jaw + gently massage cheeks</li>' +
+          '<li><strong>Eye palming:</strong> warm hands, cup over closed eyes for 1 min</li>' +
+          '<li><strong>Forehead smoothing:</strong> sweep fingers from center outward</li>' +
+          '<li><strong>Tongue stretches:</strong> activate underused muscles</li>' +
+          '<li><strong>Scalp massage:</strong> 1 min for instant headache relief</li>' +
+        '</ul>' +
+        '<h4>🌬️ Breathing as Movement</h4>' +
+        '<p>The diaphragm is a muscle — and one of the most chronically underused. Diaphragmatic breathing:</p>' +
+        '<ul>' +
+          '<li>Activates the parasympathetic nervous system</li>' +
+          '<li>Massages internal organs</li>' +
+          '<li>Improves posture (engaged diaphragm = stable core)</li>' +
+          '<li>Lowers heart rate & blood pressure within minutes</li>' +
+        '</ul>' +
+        '<div class="takeaway"><strong>🎯 Takeaway:</strong> Mind–body movement is the missing ingredient in most fitness routines. It calms, sharpens, and releases — in just minutes a day.</div>'
+    },
+    {
+      color: "#7A7A7A", icon: "✨",
+      labelLines: ["TRENDS"],
+      title: "Trends",
+      subtitle: "What\'s emerging — and worth your time",
+      body:
+        '<p><strong>The movement world is having a renaissance.</strong> Beyond traditional gym workouts, several modalities are getting evidence-backed traction. Here\'s what\'s worth exploring:</p>' +
+        '<div class="sub-pillar"><strong>🌊 Somatic Movement</strong><br>Slow, flowing, internal-awareness-based practices that release stored trauma and tension. Forms include Feldenkrais, Alexander Technique, and TRE. Ideal for high-stress lifestyles.</div>' +
+        '<div class="sub-pillar"><strong>☯️ Qigong & Tai Chi</strong><br>Ancient Chinese practices combining breath, movement, and meditation. Research shows benefits for balance, blood pressure, immune function, and stress. Excellent for all ages.</div>' +
+        '<div class="sub-pillar"><strong>🤸 Calisthenics</strong><br>Bodyweight strength training — pull-ups, push-ups, dips, handstands. Accessible anywhere, builds true functional strength, low equipment cost. Progressive and addictive.</div>' +
+        '<div class="sub-pillar"><strong>🧘 Reformer Pilates</strong><br>The fastest-growing modality globally. Low-impact, resistance-based, exceptional for core strength, posture, and rehabilitation. Particularly popular among women and post-injury recovery.</div>' +
+        '<div class="sub-pillar"><strong>🎒 Rucking</strong><br>Walking with a weighted backpack (10–15 kg). Combines cardio + strength in one. Originally military, now mainstream for its simplicity and effectiveness. Supports bone density.</div>' +
+        '<div class="sub-pillar"><strong>🧬 Longevity Training</strong><br>Function-first programming inspired by researchers like Peter Attia. Focuses on grip strength, single-leg balance, VO2 max, and movement quality — all predictors of healthspan.</div>' +
+        '<div class="sub-pillar"><strong>⌚ Wearable-Guided Training</strong><br>Using HRV, sleep data, and Zone tracking (Whoop, Oura, Garmin, Apple Watch) to personalize training and recovery. Smart, but don\'t become a slave to data.</div>' +
+        '<div class="sub-pillar"><strong>🏊 Cold Exposure & Sauna</strong><br>Not movement, but pairs powerfully with it. Cold plunges and sauna sessions support recovery, mental resilience, and cardiovascular adaptation.</div>' +
+        '<div class="sub-pillar"><strong>🌳 Natural Movement (MovNat)</strong><br>Climbing, crawling, jumping, balancing — moving like our ancestors. Builds true full-body capability that gym machines can\'t replicate.</div>' +
+        '<div class="takeaway"><strong>🎯 Takeaway:</strong> The best new modality is the one you\'ll actually do consistently. Try, sample, and keep what fits — but resist chasing every trend.</div>'
+    },
+    {
+      color: "#3D3D3D", icon: "🌿",
+      labelLines: ["LONGEVITY"],
+      title: "Longevity",
+      subtitle: "The Blue Zone principle — make movement who you are",
+      body:
+        '<div class="highlight"><strong>Consistency beats intensity. Always.</strong><br>Daily moderate movement compounds far more than sporadic hard workouts.</div>' +
+        '<h4>🏝️ The Blue Zones Lesson</h4>' +
+        '<p>The world\'s longest-living populations (Sardinia, Okinawa, Ikaria, Nicoya, Loma Linda) share a striking trait: <strong>they don\'t "exercise."</strong> They live actively. Movement is woven into daily life:</p>' +
+        '<ul>' +
+          '<li>Gardening, walking to neighbors, manual chores</li>' +
+          '<li>Hilly terrain that turns walks into resistance training</li>' +
+          '<li>Squatting and floor-sitting throughout the day</li>' +
+          '<li>Strong social connection during movement</li>' +
+        '</ul>' +
+        '<h4>🌟 Build Identity, Not Routines</h4>' +
+        '<p>The most powerful shift is psychological: stop saying <em>"I have to work out"</em> — start saying <em>"I am someone who moves."</em></p>' +
+        '<p>Habits built on identity are 10x more durable than habits built on willpower.</p>' +
+        '<div class="sub-pillar"><strong>From routine to identity</strong><br>• "I run twice a week" → "I am a runner"<br>• "I stretch in the morning" → "I am someone who takes care of my body"<br>• "I walk at lunch" → "I move every day"</div>' +
+        '<h4>🌳 Add Nature</h4>' +
+        '<p>Outdoor movement compounds the benefits. <strong>"Green exercise"</strong> (movement in nature) shows:</p>' +
+        '<ul>' +
+          '<li>Greater stress reduction than indoor exercise</li>' +
+          '<li>Improved mood and cognitive function</li>' +
+          '<li>Enhanced Vitamin D & circadian rhythm regulation</li>' +
+          '<li>Lower perceived exertion (it feels easier)</li>' +
+        '</ul>' +
+        '<h4>🧱 Habit Stacking for Movement</h4>' +
+        '<p>Attach movement to existing habits:</p>' +
+        '<ul>' +
+          '<li>Coffee brewing → squat hold</li>' +
+          '<li>Phone call → walk</li>' +
+          '<li>Brushing teeth → calf raises</li>' +
+          '<li>Waiting for a meeting → stretch break</li>' +
+        '</ul>' +
+        '<h4>🤝 Make It Social</h4>' +
+        '<p>Social accountability is the strongest predictor of long-term consistency. Walking buddies, group classes, or shared challenges dramatically increase adherence.</p>' +
+        '<div class="takeaway"><strong>🎯 Takeaway:</strong> The goal isn\'t a perfect 6-week program. The goal is a lifestyle where movement is the default — not a decision you make every day.</div>'
+    },
+    {
+      color: "#9A9A9A", icon: "🎁",
+      labelLines: ["COMPANY", "BENEFITS"],
+      title: "Company Benefits & Resources",
+      subtitle: "Support available to help you move",
+      body:
+        '<p>Our company offers a range of benefits and resources to support your movement journey and overall well-being.</p>' +
+        '<p>For the most up-to-date information on what is available to you and how to access it, please refer to the official benefits portal or reach out to your HR / People & Culture team.</p>' +
+        '<div class="takeaway"><strong>🎯 Takeaway:</strong> Make use of the support that\'s available — it\'s there to help you build a sustainable, healthy movement practice.</div>'
+    }
+  ];
+
+  var petalGroups = [];
+
+  function buildFlower() {
+    var svg = document.getElementById('flower');
+    var defs = document.getElementById('flowerDefs');
+    if (!svg) return;
+
+    var SVG_NS = 'http://www.w3.org/2000/svg';
+    var cx = 300, cy = 300;
+    var innerR = 70;
+    var outerR = 245;
+    var tipRadius = 38;
+    var petalCount = pillars.length;
+    var angleStep = 360 / petalCount;
+    var halfAngle = angleStep / 2;
+
+    function polar(angleDeg, radius) {
+      var a = (angleDeg - 90) * Math.PI / 180;
+      return { x: cx + radius * Math.cos(a), y: cy + radius * Math.sin(a) };
+    }
+
+    for (var i = 0; i < pillars.length; i++) {
+      var grad = document.createElementNS(SVG_NS, 'radialGradient');
+      grad.setAttribute('id', 'petalGrad' + i);
+      grad.setAttribute('cx', '50%');
+      grad.setAttribute('cy', '40%');
+      grad.setAttribute('r', '70%');
+
+      var stop1 = document.createElementNS(SVG_NS, 'stop');
+      stop1.setAttribute('offset', '0%');
+      stop1.setAttribute('stop-color', shadeColor(pillars[i].color, 18));
+
+      var stop2 = document.createElementNS(SVG_NS, 'stop');
+      stop2.setAttribute('offset', '100%');
+      stop2.setAttribute('stop-color', pillars[i].color);
+
+      grad.appendChild(stop1);
+      grad.appendChild(stop2);
+      defs.appendChild(grad);
+    }
+
+    var filter = document.createElementNS(SVG_NS, 'filter');
+    filter.setAttribute('id', 'softShadow');
+    filter.setAttribute('x', '-20%');
+    filter.setAttribute('y', '-20%');
+    filter.setAttribute('width', '140%');
+    filter.setAttribute('height', '140%');
+    var feGB = document.createElementNS(SVG_NS, 'feGaussianBlur');
+    feGB.setAttribute('in', 'SourceAlpha');
+    feGB.setAttribute('stdDeviation', '3');
+    var feOff = document.createElementNS(SVG_NS, 'feOffset');
+    feOff.setAttribute('dx', '0');
+    feOff.setAttribute('dy', '2');
+    feOff.setAttribute('result', 'offsetblur');
+    var feFlood = document.createElementNS(SVG_NS, 'feFlood');
+    feFlood.setAttribute('flood-color', 'rgba(0,0,0,0.15)');
+    var feComp = document.createElementNS(SVG_NS, 'feComposite');
+    feComp.setAttribute('in2', 'offsetblur');
+    feComp.setAttribute('operator', 'in');
+    var feMerge = document.createElementNS(SVG_NS, 'feMerge');
+    var feMergeNode1 = document.createElementNS(SVG_NS, 'feMergeNode');
+    var feMergeNode2 = document.createElementNS(SVG_NS, 'feMergeNode');
+    feMergeNode2.setAttribute('in', 'SourceGraphic');
+    feMerge.appendChild(feMergeNode1);
+    feMerge.appendChild(feMergeNode2);
+    filter.appendChild(feGB);
+    filter.appendChild(feOff);
+    filter.appendChild(feFlood);
+    filter.appendChild(feComp);
+    filter.appendChild(feMerge);
+    defs.appendChild(filter);
+
+    for (var j = 0; j < pillars.length; j++) {
+      (function(idx) {
+        var p = pillars[idx];
+        var centerAngle = idx * angleStep;
+        var innerHalf = halfAngle * 0.65;
+        var outerHalf = halfAngle * 0.85;
+
+        var leftInnerAng = centerAngle - innerHalf;
+        var rightInnerAng = centerAngle + innerHalf;
+        var leftOuterAng = centerAngle - outerHalf;
+        var rightOuterAng = centerAngle + outerHalf;
+
+        var innerLeft = polar(leftInnerAng, innerR);
+        var innerRight = polar(rightInnerAng, innerR);
+
+        var tipStartLeft = polar(leftOuterAng, outerR - tipRadius);
+        var tipStartRight = polar(rightOuterAng, outerR - tipRadius);
+
+        var ctrlLeft1 = polar(leftInnerAng - 2, innerR + (outerR - innerR) * 0.35);
+        var ctrlLeft2 = polar(leftOuterAng - 1, outerR - tipRadius - 5);
+        var ctrlRight1 = polar(rightOuterAng + 1, outerR - tipRadius - 5);
+        var ctrlRight2 = polar(rightInnerAng + 2, innerR + (outerR - innerR) * 0.35);
+
+        var tipCtrlLeft = polar(centerAngle - outerHalf * 0.4, outerR);
+        var tipCtrlRight = polar(centerAngle + outerHalf * 0.4, outerR);
+
+        var d =
+          'M ' + innerLeft.x + ' ' + innerLeft.y +
+          ' C ' + ctrlLeft1.x + ' ' + ctrlLeft1.y + ', ' +
+                  ctrlLeft2.x + ' ' + ctrlLeft2.y + ', ' +
+                  tipStartLeft.x + ' ' + tipStartLeft.y +
+          ' C ' + tipCtrlLeft.x + ' ' + tipCtrlLeft.y + ', ' +
+                  tipCtrlRight.x + ' ' + tipCtrlRight.y + ', ' +
+                  tipStartRight.x + ' ' + tipStartRight.y +
+          ' C ' + ctrlRight1.x + ' ' + ctrlRight1.y + ', ' +
+                  ctrlRight2.x + ' ' + ctrlRight2.y + ', ' +
+                  innerRight.x + ' ' + innerRight.y +
+          ' A ' + innerR + ' ' + innerR + ' 0 0 0 ' + innerLeft.x + ' ' + innerLeft.y +
+          ' Z';
+
+        var g = document.createElementNS(SVG_NS, 'g');
+        g.setAttribute('class', 'petal');
+
+        var path = document.createElementNS(SVG_NS, 'path');
+        path.setAttribute('d', d);
+        path.setAttribute('fill', 'url(#petalGrad' + idx + ')');
+        path.setAttribute('stroke', 'rgba(255,255,255,0.4)');
+        path.setAttribute('stroke-width', '1');
+        path.setAttribute('stroke-linejoin', 'round');
+        path.setAttribute('filter', 'url(#softShadow)');
+        g.appendChild(path);
+
+        // Position emoji closer to center, label further out at the wider midsection
+        var emojiPos = polar(centerAngle, innerR + 45);
+        var labelCenterPos = polar(centerAngle, innerR + 115);
+
+        var emoji = document.createElementNS(SVG_NS, 'text');
+        emoji.setAttribute('class', 'petal-emoji');
+        emoji.setAttribute('x', emojiPos.x);
+        emoji.setAttribute('y', emojiPos.y);
+        emoji.setAttribute('dominant-baseline', 'middle');
+        emoji.textContent = p.icon;
+        g.appendChild(emoji);
+
+        // Special triangle corner labels for the Movement Triangle pillar
+        if (p.showTriangleCorners) {
+          var topLabel = document.createElementNS(SVG_NS, 'text');
+          topLabel.setAttribute('class', 'triangle-corner-label');
+          topLabel.setAttribute('x', emojiPos.x);
+          topLabel.setAttribute('y', emojiPos.y - 18);
+          topLabel.setAttribute('text-anchor', 'middle');
+          topLabel.textContent = 'STRENGTH';
+          g.appendChild(topLabel);
+
+          var leftLabel = document.createElementNS(SVG_NS, 'text');
+          leftLabel.setAttribute('class', 'triangle-corner-label');
+          leftLabel.setAttribute('x', emojiPos.x - 16);
+          leftLabel.setAttribute('y', emojiPos.y + 16);
+          leftLabel.setAttribute('text-anchor', 'middle');
+          leftLabel.textContent = 'FLEX';
+          g.appendChild(leftLabel);
+
+          var rightLabel = document.createElementNS(SVG_NS, 'text');
+          rightLabel.setAttribute('class', 'triangle-corner-label');
+          rightLabel.setAttribute('x', emojiPos.x + 16);
+          rightLabel.setAttribute('y', emojiPos.y + 16);
+          rightLabel.setAttribute('text-anchor', 'middle');
+          rightLabel.textContent = 'CARDIO';
+          g.appendChild(rightLabel);
+        }
+
+        var longestLine = p.labelLines[0].length;
+        if (p.labelLines[1] && p.labelLines[1].length > longestLine) {
+          longestLine = p.labelLines[1].length;
+        }
+        var fontSize = 10.5;
+        if (longestLine >= 13) fontSize = 9;
+        else if (longestLine >= 11) fontSize = 9.8;
+
+        if (!p.labelLines[1]) fontSize = 12;
+
+        var label = document.createElementNS(SVG_NS, 'text');
+        label.setAttribute('class', 'petal-label');
+        label.setAttribute('x', labelCenterPos.x);
+        label.setAttribute('y', labelCenterPos.y);
+        label.setAttribute('text-anchor', 'middle');
+        label.setAttribute('font-size', fontSize);
+
+        if (p.labelLines[1]) {
+          var tspan1 = document.createElementNS(SVG_NS, 'tspan');
+          tspan1.setAttribute('x', labelCenterPos.x);
+          tspan1.setAttribute('dy', '-0.4em');
+          tspan1.textContent = p.labelLines[0];
+          label.appendChild(tspan1);
+
+          var tspan2 = document.createElementNS(SVG_NS, 'tspan');
+          tspan2.setAttribute('x', labelCenterPos.x);
+          tspan2.setAttribute('dy', '1.15em');
+          tspan2.textContent = p.labelLines[1];
+          label.appendChild(tspan2);
+        } else {
+          label.setAttribute('dominant-baseline', 'middle');
+          label.textContent = p.labelLines[0];
+        }
+        g.appendChild(label);
+
+        g.addEventListener('click', function() { showDetail(idx); });
+        svg.appendChild(g);
+        petalGroups.push(g);
+      })(j);
+    }
+
+    var outerRing = document.createElementNS(SVG_NS, 'circle');
+    outerRing.setAttribute('class', 'center-circle-outer');
+    outerRing.setAttribute('cx', cx);
+    outerRing.setAttribute('cy', cy);
+    outerRing.setAttribute('r', innerR + 6);
+    svg.appendChild(outerRing);
+
+    var centerCircle = document.createElementNS(SVG_NS, 'circle');
+    centerCircle.setAttribute('class', 'center-circle');
+    centerCircle.setAttribute('cx', cx);
+    centerCircle.setAttribute('cy', cy);
+    centerCircle.setAttribute('r', innerR - 2);
+    svg.appendChild(centerCircle);
+
+    var centerEmoji = document.createElementNS(SVG_NS, 'text');
+    centerEmoji.setAttribute('class', 'center-emoji');
+    centerEmoji.setAttribute('x', cx);
+    centerEmoji.setAttribute('y', cy - 5);
+    centerEmoji.textContent = '🤸';
+    svg.appendChild(centerEmoji);
+
+    var centerLabel = document.createElementNS(SVG_NS, 'text');
+    centerLabel.setAttribute('class', 'center-label');
+    centerLabel.setAttribute('x', cx);
+    centerLabel.setAttribute('y', cy + 28);
+    centerLabel.textContent = 'MOVEMENT';
+    svg.appendChild(centerLabel);
+  }
+
+  function showDetail(i) {
+    var p = pillars[i];
+
+    for (var k = 0; k < petalGroups.length; k++) {
+      petalGroups[k].classList.remove('active');
+    }
+    petalGroups[i].classList.add('active');
+
+    document.getElementById('detailPlaceholder').style.display = 'none';
+    document.getElementById('detailContent').style.display = 'block';
+
+    document.getElementById('detailHeader').style.background =
+      'linear-gradient(135deg, ' + p.color + ' 0%, ' + shadeColor(p.color, -15) + ' 100%)';
+    document.getElementById('detailIcon').textContent = p.icon;
+    document.getElementById('detailTitle').textContent = p.title;
+    document.getElementById('detailSubtitle').textContent = p.subtitle;
+    document.getElementById('detailBody').innerHTML = p.body;
+
+    setTimeout(function() {
+      var hs = document.querySelectorAll('.detail-body h4');
+      for (var j = 0; j < hs.length; j++) hs[j].style.borderLeftColor = p.color;
+    }, 10);
+
+    if (window.innerWidth <= 1024) {
+      document.getElementById('detailPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  function shadeColor(color, percent) {
+    var num = parseInt(color.replace("#",""), 16);
+    var amt = Math.round(2.55 * percent);
+    var R = (num >> 16) + amt;
+    var G = ((num >> 8) & 0x00FF) + amt;
+    var B = (num & 0x0000FF) + amt;
+    return "#" + (0x1000000 +
+      (R<255?R<1?0:R:255)*0x10000 +
+      (G<255?G<1?0:G:255)*0x100 +
+      (B<255?B<1?0:B:255)).toString(16).slice(1);
+  }
+
+  function init() { buildFlower(); }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+
+</body>
+</html>
